@@ -3,10 +3,10 @@ import PrimaryButton from '../../components/PrimaryButton';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, displayName, logout } = useAuth();
 
   return (
-    <PlaceholderScreen title="Профил" note={`Вписан като: ${user?.displayName}`}>
+    <PlaceholderScreen title={displayName || 'Профил'} note={user?.email}>
       <PrimaryButton title="Изход" variant="secondary" onPress={logout} />
     </PlaceholderScreen>
   );

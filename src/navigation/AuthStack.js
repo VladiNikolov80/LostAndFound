@@ -5,11 +5,12 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 
 const Stack = createNativeStackNavigator();
 
+// Екраните за вход имат собствено заглавие, затова header-ът е скрит.
 export default function AuthStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Вход' }} />
-      <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Регистрация' }} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 }
