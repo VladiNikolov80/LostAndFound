@@ -3,14 +3,14 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../constants/colors';
 
 // Поле с етикет отгоре и съобщение за грешка отдолу.
-export default function FormInput({ label, error, ...inputProps }) {
+export default function FormInput({ label, error, style, ...inputProps }) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={[styles.input, error && styles.inputError]}
-        placeholderTextColor={colors.muted}
         {...inputProps}
+        style={[styles.input, style, error && styles.inputError]}
+        placeholderTextColor={colors.muted}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>

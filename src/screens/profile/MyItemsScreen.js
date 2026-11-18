@@ -1,14 +1,24 @@
-import PlaceholderScreen from '../../components/PlaceholderScreen';
-import PrimaryButton from '../../components/PrimaryButton';
+import { useCallback } from 'react';
+
+import ItemsList from '../../components/ItemsList';
+import useItemsLoader from '../../hooks/useItemsLoader';
+import { useAuth } from '../../context/AuthContext';
+import { getMyItems } from '../../services/itemsService';
 
 export default function MyItemsScreen({ navigation }) {
+  const { user } = useAuth();
+  const loadMyItems = useCallback(() => getMyItems(user.uid), [user.uid]);
+  const { items, loading, refreshing, error, refresh } = useItemsLoader(loadMyItems);
+
   return (
-    <PlaceholderScreen title="Моите обяви" note="Тук ще са само твоите обяви.">
-      {/* ВРЕМЕННО: тестово ID */}
-      <PrimaryButton
-        title="Отвори моя примерна обява"
-        onPress={() => navigation.navigate('ItemDetails', { itemId: 'my-456' })}
-      />
-    </PlaceholderScreen>
+    <ItemsList
+      items={items}
+      loading={loading}
+      refreshing={refreshing}
+      error={error}
+      onRefresh={refresh}
+      onItemPress={(itemId) => navigation.navigate('ItemDetails', { itemId })}
+      emptyMessage="Още нямаш обяви. Натисни „Нова“ отдолу, за да публикуваш."
+    />
   );
 }
