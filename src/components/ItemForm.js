@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,11 +12,16 @@ import {
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import DateField from './DateField';
 import FormInput from './FormInput';
+import PhotoPicker from './PhotoPicker';
 import PrimaryButton from './PrimaryButton';
 import { colors } from '../constants/colors';
 import { CATEGORIES } from '../constants/categories';
+import { getCurrentPlace } from '../services/location';
+import { uploadImage } from '../services/uploadImage';
 import { toDate } from '../utils/formatDate';
 
 const EMPTY_VALUES = {
@@ -25,6 +31,7 @@ const EMPTY_VALUES = {
   description: '',
   place: '',
   reward: false,
+  location: null, // { latitude, longitude } от GPS
 };
 
 // Общата форма за „Нова обява“ и „Редакция“.
@@ -38,13 +45,35 @@ export default function ItemForm({ initialValues, submitLabel, onSubmit }) {
     ...initialValues,
     // При редакция датата идва от Firestore като Timestamp, при нова обява е днес.
     eventDate: toDate(initialValues?.eventDate) || new Date(),
+    // Снимките: при редакция – вече качените адреси.
+    photos: initialValues?.imageUrls || [],
   }));
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   function setField(name, value) {
     setValues((current) => ({ ...current, [name]: value }));
+  }
+
+  // Бутонът „Използвай текущото ми място“: GPS → адрес в полето „Място“.
+  async function fillCurrentPlace() {
+    setLocating(true);
+    try {
+      const { address, coords } = await getCurrentPlace();
+      setValues((current) => ({ ...current, place: address, location: coords }));
+      setErrors((current) => ({ ...current, place: undefined }));
+    } catch (err) {
+      Alert.alert('Местоположение', err.message || 'Мястото не можа да се определи.');
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  // Ако потребителят смени адреса на ръка, GPS координатите вече не отговарят.
+  function changePlaceText(text) {
+    setValues((current) => ({ ...current, place: text, location: null }));
   }
 
   function validate() {
@@ -90,8 +119,25 @@ export default function ItemForm({ initialValues, submitLabel, onSubmit }) {
     if (!validate()) return;
 
     setSubmitting(true);
+
+    // Първо качваме новите снимки в Cloudinary. Вече качените (https) остават същите.
+    let imageUrls;
+    try {
+      imageUrls = await Promise.all(
+        values.photos.map((uri) => (uri.startsWith('http') ? uri : uploadImage(uri)))
+      );
+    } catch (err) {
+      console.log('Грешка при качване на снимка:', err);
+      // Показваме и причината от Cloudinary – помага да се разбере какво не е наред.
+      setServerError(`Снимките не можаха да се качат (${err.message}). Опитай пак.`);
+      setSubmitting(false);
+      return;
+    }
+
     try {
       await onSubmit({
+        imageUrls,
+        location: values.location || null,
         type: values.type,
         title: values.title.trim(),
         category: values.category,
@@ -142,6 +188,8 @@ export default function ItemForm({ initialValues, submitLabel, onSubmit }) {
           />
         </View>
 
+        <PhotoPicker photos={values.photos} onChange={(photos) => setField('photos', photos)} />
+
         <FormInput
           label="Заглавие"
           value={values.title}
@@ -190,13 +238,28 @@ export default function ItemForm({ initialValues, submitLabel, onSubmit }) {
           error={errors.eventDate}
         />
 
-        <FormInput
-          label="Място"
-          value={values.place}
-          onChangeText={(text) => setField('place', text)}
-          placeholder="Напр. бул. Витоша, до НДК"
-          error={errors.place}
-        />
+        <View style={styles.field}>
+          <FormInput
+            label="Място"
+            value={values.place}
+            onChangeText={changePlaceText}
+            placeholder="Напр. бул. Витоша, до НДК"
+            error={errors.place}
+          />
+          <Pressable
+            onPress={fillCurrentPlace}
+            disabled={locating}
+            style={({ pressed }) => [styles.gpsButton, (pressed || locating) && styles.dimmed]}
+          >
+            <Ionicons name="locate-outline" size={18} color={colors.found} />
+            <Text style={styles.gpsText}>
+              {locating ? 'Търся местоположението…' : 'Използвай текущото ми място'}
+            </Text>
+          </Pressable>
+          {values.location ? (
+            <Text style={styles.hint}>Мястото е взето от GPS – в обявата ще може да се отвори на картата.</Text>
+          ) : null}
+        </View>
 
         {values.type === 'lost' ? (
           <View style={styles.switchRow}>
@@ -296,6 +359,21 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.surface,
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 44,
+    alignSelf: 'flex-start',
+  },
+  gpsText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.found,
+  },
+  dimmed: {
+    opacity: 0.6,
   },
   switchRow: {
     flexDirection: 'row',

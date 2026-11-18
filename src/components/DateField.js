@@ -36,6 +36,7 @@ export default function DateField({ label, value, onChange, error }) {
             value={value}
             mode="date"
             display="compact"
+            locale="bg-BG"
             maximumDate={today}
             onValueChange={(event, date) => onChange(date)}
           />

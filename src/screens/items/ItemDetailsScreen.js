@@ -1,5 +1,16 @@
 import { useCallback, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -11,6 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../constants/colors';
 import { getCategoryLabel } from '../../constants/categories';
 import { deleteItem, getItemById, setItemStatus } from '../../services/itemsService';
+import { resizedImageUrl } from '../../services/uploadImage';
 import { formatDate } from '../../utils/formatDate';
 
 // Динамичен екран: получава itemId като параметър и зарежда само тази обява.
@@ -21,6 +33,8 @@ export default function ItemDetailsScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const { width } = useWindowDimensions();
+  const photoWidth = width - 40; // ширината на екрана минус отстъпите отляво и отдясно
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +105,19 @@ export default function ItemDetailsScreen({ route, navigation }) {
     ]);
   }
 
+  // Отваря мястото в приложението за карти на телефона (Apple Maps / Google Maps).
+  function openInMaps() {
+    const { latitude, longitude } = item.location;
+    const label = encodeURIComponent(item.title);
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?ll=${latitude},${longitude}&q=${label}`,
+      default: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`,
+    });
+    Linking.openURL(url).catch(() =>
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`)
+    );
+  }
+
   function handleContact() {
     const subject = encodeURIComponent(`Относно обявата: ${item.title}`);
     Linking.openURL(`mailto:${item.ownerEmail}?subject=${subject}`).catch(() =>
@@ -100,9 +127,26 @@ export default function ItemDetailsScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={[styles.photo, { backgroundColor: item.type === 'lost' ? colors.lostSoft : colors.foundSoft }]}>
-        <Ionicons name="image-outline" size={48} color={item.type === 'lost' ? colors.lost : colors.found} />
-      </View>
+      {item.imageUrls?.length ? (
+        // Снимките една до друга – плъзгаш наляво/надясно.
+        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.gallery}>
+          {item.imageUrls.map((url) => (
+            <Image
+              key={url}
+              source={{ uri: resizedImageUrl(url, 1000) }}
+              style={[styles.photo, { width: photoWidth }]}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={[styles.photo, { backgroundColor: item.type === 'lost' ? colors.lostSoft : colors.foundSoft }]}>
+          <Ionicons name="image-outline" size={48} color={item.type === 'lost' ? colors.lost : colors.found} />
+          <Text style={styles.noPhoto}>Няма снимка</Text>
+        </View>
+      )}
+      {item.imageUrls?.length > 1 ? (
+        <Text style={styles.galleryHint}>{item.imageUrls.length} снимки – плъзни настрани</Text>
+      ) : null}
 
       <TypeBadge type={item.type} status={item.status} />
       <Text style={styles.title}>{item.title}</Text>
@@ -116,6 +160,12 @@ export default function ItemDetailsScreen({ route, navigation }) {
         />
       </View>
       <Info icon="location-outline" label="Място" value={item.place} />
+      {item.location ? (
+        <Pressable onPress={openInMaps} style={({ pressed }) => [styles.mapLink, pressed && styles.pressed]}>
+          <Ionicons name="map-outline" size={18} color={colors.found} />
+          <Text style={styles.mapLinkText}>Отвори в картите</Text>
+        </Pressable>
+      ) : null}
 
       {item.reward ? (
         <View style={styles.reward}>
@@ -179,11 +229,41 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 14,
   },
+  gallery: {
+    borderRadius: 18,
+  },
   photo: {
-    height: 200,
+    height: 240,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.border,
+  },
+  noPhoto: {
+    fontSize: 13,
+    color: colors.muted,
+  },
+  galleryHint: {
+    marginTop: -6,
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+  mapLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 44,
+    alignSelf: 'flex-start',
+  },
+  mapLinkText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.found,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   title: {
     fontSize: 24,

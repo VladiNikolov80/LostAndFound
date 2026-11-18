@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import TypeBadge from './TypeBadge';
 import { colors } from '../constants/colors';
 import { getCategoryLabel } from '../constants/categories';
 import { formatDate } from '../utils/formatDate';
+import { resizedImageUrl } from '../services/uploadImage';
 
 // Една обява в списъка. Цялата карта е бутон към детайлите.
 export default function ItemCard({ item, onPress }) {
@@ -15,10 +16,14 @@ export default function ItemCard({ item, onPress }) {
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      {/* Място за снимката – ще я добавим със стъпката за камерата */}
-      <View style={[styles.thumb, { backgroundColor: isLost ? colors.lostSoft : colors.foundSoft }]}>
-        <Ionicons name="image-outline" size={28} color={isLost ? colors.lost : colors.found} />
-      </View>
+      {/* Първата снимка, смалена от Cloudinary. Ако няма снимка – цветно каре с иконка. */}
+      {item.imageUrls?.length ? (
+        <Image source={{ uri: resizedImageUrl(item.imageUrls[0], 240) }} style={styles.thumb} />
+      ) : (
+        <View style={[styles.thumb, { backgroundColor: isLost ? colors.lostSoft : colors.foundSoft }]}>
+          <Ionicons name="image-outline" size={28} color={isLost ? colors.lost : colors.found} />
+        </View>
+      )}
 
       <View style={styles.body}>
         <View style={styles.row}>
@@ -53,6 +58,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.border,
   },
   body: {
     flex: 1,

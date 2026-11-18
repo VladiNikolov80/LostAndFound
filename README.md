@@ -11,7 +11,8 @@ The Android build (APK) will be added here before the deadline.
 - **React Native** with **Expo** (SDK 58)
 - **React Navigation** – bottom tabs with stacks inside them
 - **Firebase** – Authentication and Firestore (free Spark plan)
-- **Cloudinary** – for the photos *(coming soon)*
+- **Cloudinary** – stores the photos (free plan)
+- **expo-image-picker** and **expo-location** – camera, gallery and GPS
 
 ## Running the project locally
 
@@ -43,7 +44,7 @@ src/
   hooks/        useItemsLoader – loading, refreshing and errors for the lists
   navigation/   all navigators (auth stack, tabs, stacks inside the tabs)
   screens/      the screens, grouped by feature (auth, items, map, profile)
-  services/     itemsService – all Firestore calls for the posts
+  services/     itemsService (Firestore), uploadImage (Cloudinary), location (GPS)
   utils/        small helpers (error messages, date format)
 ```
 
@@ -120,7 +121,9 @@ So there are navigators inside other navigators: the stacks are inside the tabs.
 
 **Collections**
 - `users/{uid}` – name, email, createdAt
-- `items/{itemId}` – type (`lost` / `found`), title, category, description, place, status (`active` / `resolved`), ownerId, ownerName, ownerEmail, createdAt, updatedAt
+- `items/{itemId}` – type (`lost` / `found`), title, category, description, place, location (`{ latitude, longitude }` or `null`), eventDate, reward, imageUrls, status (`active` / `resolved`), ownerId, ownerName, ownerEmail, createdAt, updatedAt
+
+**Photos:** Firebase Storage needs a paid plan for new projects, so I store the photos in **Cloudinary** (free plan). The app uploads each photo to Cloudinary and saves only the photo's web address in `imageUrls` in Firestore.
 
 All Firestore calls are in one file, `src/services/itemsService.js`, so the screens don't talk to Firestore directly.
 
@@ -162,12 +165,31 @@ All Firestore calls are in one file, `src/services/itemsService.js`, so the scre
 
 **Keyboard, Safe Area & Status Bar**
 - The forms are inside `KeyboardAvoidingView` + `ScrollView`, so the keyboard never covers the field you are typing in. You can always scroll to the button.
+- On Android this needed an extra fix. Expo apps on Android are edge-to-edge, so the window doesn't get smaller when the keyboard opens, and at first the keyboard covered the Description field. I set `behavior="padding"` and passed the header height (`useHeaderHeight()`) as `keyboardVerticalOffset`, so the form moves up exactly above the keyboard. On iPhone the `ScrollView` does it by itself with `automaticallyAdjustKeyboardInsets`.
+- The bottom tabs hide while the keyboard is open (`tabBarHideOnKeyboard`), so there is more space for the form.
 - `SafeAreaProvider` wraps the app and the login screens use `SafeAreaView`, so nothing goes under the notch or the clock. The screens with a header get the safe area from React Navigation.
 - `StatusBar` from `expo-status-bar` is set to dark text, because the app background is light.
 
 ### 9. Native Device Features
 
-*Will be filled in with the camera and location step.*
+The app uses two features of the phone, and both have a real job in the app.
+
+**Camera & Gallery** (`expo-image-picker`)
+- In the New post and Edit forms you can add up to **3 photos** of the item: **Take photo** opens the camera, **Gallery** opens your photos. You can crop the photo and remove it with the small "x".
+- Before opening the camera the app asks for permission. If you say no, you get a message how to allow it in the phone settings.
+- Photos are compressed (`quality: 0.6`) so they upload faster.
+- When you save the post, the new photos are uploaded to Cloudinary (`uploadImage()`), and the post saves their addresses. When you edit a post, the old photos are not uploaded again.
+- The list shows a small version of the first photo, and the details screen shows all photos – you swipe left and right. Cloudinary makes the small versions for me: I just add the size to the photo address (`resizedImageUrl()`).
+- Why it matters: with a photo people can recognize their thing much faster than from a text.
+
+**Location / GPS** (`expo-location`)
+- Under the Place field there is a button **"Use my current location"**. It asks for permission, gets the GPS position and turns it into an address (`reverseGeocodeAsync`), for example "Vitosha Blvd 1, Sofia". The address goes into the Place field and the coordinates are saved in the post.
+- If you change the address by hand, the GPS coordinates are removed, because they would not match the new address anymore.
+- On the details screen, posts with coordinates have **"Open in maps"**. It opens Apple Maps on iPhone or the maps app on Android with the exact point.
+- Why it matters: when you find something on the street, you can mark the exact place in one tap, and the owner sees exactly where it was.
+
+**Permissions**
+- The permission texts are in `app.json` (config plugins for `expo-image-picker` and `expo-location`), so the phone shows a clear reason when it asks.
 
 ### 10. Typical User Flow
 
