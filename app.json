@@ -15,7 +15,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.vladinikolov.lostandfound"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,7 +42,8 @@
         {
           "locationWhenInUsePermission": "Приложението използва местоположението ти, за да попълни къде е изгубена или намерена вещта."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

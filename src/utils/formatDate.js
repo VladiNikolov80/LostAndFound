@@ -9,6 +9,17 @@ export function formatDate(value) {
   return `${day}.${month}.${date.getFullYear()}`;
 }
 
+// Дата и час → „18.11.2026, 12:40“ (за коментарите)
+export function formatDateTime(value) {
+  const date = toDate(value);
+  if (!date) {
+    return '';
+  }
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${formatDate(date)}, ${hours}:${minutes}`;
+}
+
 // Firestore пази датите като Timestamp. Тази функция ги превръща в Date.
 export function toDate(value) {
   if (!value) {

@@ -74,7 +74,10 @@ export function setItemStatus(id, status) {
   return updateItem(id, { status });
 }
 
-// DELETE
-export function deleteItem(id) {
-  return deleteDoc(doc(db, 'items', id));
+// DELETE: първо коментарите под обявата, после самата обява.
+// (Firestore не трие подколекциите сам, когато изтриеш документа.)
+export async function deleteItem(id) {
+  const comments = await getDocs(collection(db, 'items', id, 'comments'));
+  await Promise.all(comments.docs.map((c) => deleteDoc(c.ref)));
+  await deleteDoc(doc(db, 'items', id));
 }

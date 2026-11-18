@@ -4,7 +4,20 @@ A mobile app for lost and found things. If you lost something, you post it as **
 
 ## Download (APK)
 
-The Android build (APK) will be added here before the deadline.
+**[Download LostAndFound.apk](https://github.com/VladiNikolov80/LostAndFound/releases/latest/download/LostAndFound.apk)** (Android)
+
+The link always points to the newest version in [Releases](https://github.com/VladiNikolov80/LostAndFound/releases). To install it, open the link on an Android phone and allow "Install unknown apps" for your browser when Android asks.
+
+## Test accounts
+
+You can log in with one of these accounts or register a new one.
+
+| Email | Password |
+| --- | --- |
+| test@test.com | 123456 |
+| test1@test1.com | 123456 |
+
+With two accounts you can see the difference between your own posts and other people's posts: on your own post you can Edit, Mark as returned and Delete, and on someone else's post you can only contact the author.
 
 ## Tech stack
 
@@ -12,7 +25,7 @@ The Android build (APK) will be added here before the deadline.
 - **React Navigation** – bottom tabs with stacks inside them
 - **Firebase** – Authentication and Firestore (free Spark plan)
 - **Cloudinary** – stores the photos (free plan)
-- **expo-image-picker** and **expo-location** – camera, gallery and GPS
+- **expo-image-picker**, **expo-location** and **expo-file-system** – camera, gallery, GPS and photo upload
 
 ## Running the project locally
 
@@ -44,7 +57,7 @@ src/
   hooks/        useItemsLoader – loading, refreshing and errors for the lists
   navigation/   all navigators (auth stack, tabs, stacks inside the tabs)
   screens/      the screens, grouped by feature (auth, items, map, profile)
-  services/     itemsService (Firestore), uploadImage (Cloudinary), location (GPS)
+  services/     itemsService and commentsService (Firestore), uploadImage (Cloudinary), location (GPS)
   utils/        small helpers (error messages, date format)
 ```
 
@@ -65,7 +78,7 @@ src/
 
 **Authenticated User**
 - A logged-in user sees the whole app: Posts, Map, New post, My posts and Profile.
-- I also protected the data in **Firestore Security Rules**, not only in the app. Only logged-in users can read posts. A user can create a post only with their own id, and can edit or delete **only their own** posts. Each user can write only their own profile in `users`.
+- I also protected the data in **Firestore Security Rules**, not only in the app. Only logged-in users can read posts. A user can create a post only with their own id, and can edit or delete **only their own** posts. Each user can write only their own profile in `users`. A comment can be written only with your own id and must be 1–500 characters, and it can be deleted only by its author or by the author of the post.
 
 ### 3. Authentication & Session Handling
 
@@ -113,7 +126,13 @@ So there are navigators inside other navigators: the stacks are inside the tabs.
 **Details Screen**
 - When you tap a card, the app opens `ItemDetails` and passes the post's id as a route parameter: `navigation.navigate('ItemDetails', { itemId })`.
 - The screen reads the id from `route.params` and loads only that post with `getItemById(itemId)`.
-- If you are the author, you see Edit, Mark as returned and Delete. If not, you see a button that opens your email app with the author's address and the post title already filled in.
+- If you are the author, you see Edit, Mark as returned and Delete. If not, you see a button that opens your email app with the author's address and the post title already filled in – this is for **private** contact (for example to give your phone number).
+
+**Comments**
+- Under every post there is a **public comments** section, for example "I think I saw it at the bus stop". The author of the post can answer there, and their comments are marked "author of the post".
+- The comments come in **real time** with Firestore's `onSnapshot()`: when someone writes a comment, it appears on everybody's screen without refreshing. When you leave the screen, the app stops listening (`unsubscribe`).
+- Everyone can delete their own comments. The author of the post can delete all comments under it (for example spam).
+- A comment can't be empty and can be at most 500 characters.
 
 ### 6. Data Source & Backend
 
@@ -122,6 +141,8 @@ So there are navigators inside other navigators: the stacks are inside the tabs.
 **Collections**
 - `users/{uid}` – name, email, createdAt
 - `items/{itemId}` – type (`lost` / `found`), title, category, description, place, location (`{ latitude, longitude }` or `null`), eventDate, reward, imageUrls, status (`active` / `resolved`), ownerId, ownerName, ownerEmail, createdAt, updatedAt
+
+- `items/{itemId}/comments/{commentId}` – text, authorId, authorName, createdAt (a subcollection of the post)
 
 **Photos:** Firebase Storage needs a paid plan for new projects, so I store the photos in **Cloudinary** (free plan). The app uploads each photo to Cloudinary and saves only the photo's web address in `imageUrls` in Firestore.
 
@@ -141,7 +162,11 @@ All Firestore calls are in one file, `src/services/itemsService.js`, so the scre
 - **Mark as returned** is also an update: `setItemStatus(id, 'resolved')`. You can activate the post again the same way.
 
 **Delete**
-- Only the author sees the Delete button. The app asks for confirmation (`Alert`), then calls `deleteItem(id)` (`deleteDoc()`) and goes back to the list, which reloads without the deleted post.
+- Only the author sees the Delete button. The app asks for confirmation (`Alert`), then calls `deleteItem(id)` and goes back to the list, which reloads without the deleted post.
+- Firestore doesn't delete subcollections by itself, so `deleteItem()` first deletes all comments of the post and then the post (`deleteDoc()`).
+
+**Comments**
+- Create: `addComment()` (`addDoc()` in `items/{itemId}/comments`). Read: `subscribeToComments()` (`onSnapshot()`, real time). Delete: `deleteComment()`.
 - The Firestore rules also check that only the author can update or delete, so it is protected even outside the app.
 
 ### 8. Forms & Validation
@@ -179,6 +204,7 @@ The app uses two features of the phone, and both have a real job in the app.
 - Before opening the camera the app asks for permission. If you say no, you get a message how to allow it in the phone settings.
 - Photos are compressed (`quality: 0.6`) so they upload faster.
 - When you save the post, the new photos are uploaded to Cloudinary (`uploadImage()`), and the post saves their addresses. When you edit a post, the old photos are not uploaded again.
+- For the upload I use `File.upload()` from `expo-file-system` (multipart upload to an unsigned Cloudinary preset). At first I sent the photo with `fetch` and `FormData` like `{ uri, type, name }`, but in Expo SDK 58 the built-in `fetch` doesn't support this anymore and gave "Unsupported FormDataPart implementation". With `File.upload()` the phone sends the file by itself.
 - The list shows a small version of the first photo, and the details screen shows all photos – you swipe left and right. Cloudinary makes the small versions for me: I just add the size to the photo address (`resizedImageUrl()`).
 - Why it matters: with a photo people can recognize their thing much faster than from a text.
 
@@ -193,8 +219,40 @@ The app uses two features of the phone, and both have a real job in the app.
 
 ### 10. Typical User Flow
 
-*Will be filled in at the end.*
+**Someone lost their keys**
+1. Opens the app and registers (or logs in with a test account).
+2. Goes to the **New** tab, chooses **I lost something**, takes a photo of a similar key ring or picks one from the gallery, writes a title and description, chooses the category **Keys**, sets the date and taps **Use my current location**. Turns on **I offer a reward**.
+3. Taps **Publish**. The app uploads the photo, saves the post and opens it.
+4. Later, in **My posts**, they see their post. When the keys are back, they open the post and tap **Mark as returned**. The badge turns grey.
+
+**Someone found the keys**
+1. Logs in with another account and scrolls the **Posts** list, or uses the **Lost** filter.
+2. Sees the post with the photo, opens it, checks the place with **Open in maps**.
+3. Taps **I found it – write to the author**, and the email app opens with the author's address and the post title.
+
+**After that**
+- Pull down on the list to refresh it.
+- Close the app and open it again – you are still logged in.
+- **Profile → Log out** brings you back to the Login screen.
 
 ### 11. Error & Edge Case Handling
 
-*Will be filled in at the end.*
+**Loading and errors**
+- Every screen that loads data shows a spinner while it loads.
+- If the posts can't be loaded (for example no internet), the list shows a message and a **Try again** button instead of crashing.
+- If a post was deleted in the meantime, the details screen shows "This post doesn't exist".
+- Login and register errors from Firebase are shown as readable messages (wrong password, email already used, too many tries, no internet).
+
+**Forms**
+- Invalid fields are shown in red with a message, and nothing is sent to Firebase until everything is valid.
+- While saving, the button shows a spinner and is disabled, so you can't send the same post twice.
+- If a photo can't be uploaded, the post is **not** saved and you see the reason. The form keeps everything you typed, so you can just try again.
+
+**Permissions**
+- If you don't allow the camera or the location, the app shows a message how to allow it in the settings and keeps working. Photos and GPS are optional.
+- If GPS works but the address can't be found, the app fills in the coordinates instead.
+
+**Security**
+- You can't edit someone else's post, even if you open the Edit screen directly – the screen checks the owner and shows a message. The Firestore rules block it too.
+- Deleting asks for confirmation first.
+- Old posts made before the date and photo features still work: without a date the app shows the publish date, and without photos it shows an icon.

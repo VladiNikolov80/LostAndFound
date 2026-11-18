@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -12,8 +13,10 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Ionicons } from '@expo/vector-icons';
 
+import CommentsSection from '../../components/CommentsSection';
 import LoadingScreen from '../../components/LoadingScreen';
 import MessageView from '../../components/MessageView';
 import PrimaryButton from '../../components/PrimaryButton';
@@ -33,6 +36,7 @@ export default function ItemDetailsScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const headerHeight = useHeaderHeight();
   const { width } = useWindowDimensions();
   const photoWidth = width - 40; // ширината на екрана минус отстъпите отляво и отдясно
 
@@ -57,7 +61,7 @@ export default function ItemDetailsScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
   if (loading) {
@@ -114,97 +118,124 @@ export default function ItemDetailsScreen({ route, navigation }) {
       default: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`,
     });
     Linking.openURL(url).catch(() =>
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`)
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`),
     );
   }
 
   function handleContact() {
     const subject = encodeURIComponent(`Относно обявата: ${item.title}`);
     Linking.openURL(`mailto:${item.ownerEmail}?subject=${subject}`).catch(() =>
-      Alert.alert('Няма приложение за поща', `Пиши на ${item.ownerEmail}`)
+      Alert.alert('Няма приложение за поща', `Пиши на ${item.ownerEmail}`),
     );
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {item.imageUrls?.length ? (
-        // Снимките една до друга – плъзгаш наляво/надясно.
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.gallery}>
-          {item.imageUrls.map((url) => (
-            <Image
-              key={url}
-              source={{ uri: resizedImageUrl(url, 1000) }}
-              style={[styles.photo, { width: photoWidth }]}
-            />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={[styles.photo, { backgroundColor: item.type === 'lost' ? colors.lostSoft : colors.foundSoft }]}>
-          <Ionicons name="image-outline" size={48} color={item.type === 'lost' ? colors.lost : colors.found} />
-          <Text style={styles.noPhoto}>Няма снимка</Text>
-        </View>
-      )}
-      {item.imageUrls?.length > 1 ? (
-        <Text style={styles.galleryHint}>{item.imageUrls.length} снимки – плъзни настрани</Text>
-      ) : null}
-
-      <TypeBadge type={item.type} status={item.status} />
-      <Text style={styles.title}>{item.title}</Text>
-
-      <View style={styles.infoRow}>
-        <Info icon="pricetag-outline" label="Категория" value={getCategoryLabel(item.category)} />
-        <Info
-          icon="calendar-outline"
-          label={item.type === 'lost' ? 'Изгубено на' : 'Намерено на'}
-          value={formatDate(item.eventDate || item.createdAt)}
-        />
-      </View>
-      <Info icon="location-outline" label="Място" value={item.place} />
-      {item.location ? (
-        <Pressable onPress={openInMaps} style={({ pressed }) => [styles.mapLink, pressed && styles.pressed]}>
-          <Ionicons name="map-outline" size={18} color={colors.found} />
-          <Text style={styles.mapLinkText}>Отвори в картите</Text>
-        </Pressable>
-      ) : null}
-
-      {item.reward ? (
-        <View style={styles.reward}>
-          <Ionicons name="gift-outline" size={18} color={colors.lost} />
-          <Text style={styles.rewardText}>Предлага се възнаграждение за намирането</Text>
-        </View>
-      ) : null}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Описание</Text>
-        <Text style={styles.description}>{item.description}</Text>
-      </View>
-
-      <Text style={styles.owner}>Публикувана от {isOwner ? 'теб' : item.ownerName}</Text>
-
-      <View style={styles.actions}>
-        {isOwner ? (
-          <>
-            <PrimaryButton
-              title="Редактирай"
-              onPress={() => navigation.navigate('EditItem', { itemId })}
-              disabled={busy}
-            />
-            <PrimaryButton
-              title={isResolved ? 'Активирай отново' : 'Маркирай като върнато'}
-              variant="secondary"
-              onPress={handleToggleStatus}
-              loading={busy}
-            />
-            <PrimaryButton title="Изтрий" variant="secondary" onPress={handleDelete} disabled={busy} />
-          </>
+    // Полето за коментар е най-долу, затова и тук пазим да не го закрие клавиатурата
+    // (същото решение като във формата за обява).
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'android' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
+    >
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
+        {item.imageUrls?.length ? (
+          // Снимките една до друга – плъзгаш наляво/надясно.
+          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.gallery}>
+            {item.imageUrls.map((url) => (
+              <Image
+                key={url}
+                source={{ uri: resizedImageUrl(url, 1000) }}
+                style={[styles.photo, { width: photoWidth }]}
+              />
+            ))}
+          </ScrollView>
         ) : (
-          <PrimaryButton
-            title={item.type === 'lost' ? 'Намерих го — пиши на автора' : 'Мое е — пиши на автора'}
-            onPress={handleContact}
-          />
+          <View
+            style={[
+              styles.photo,
+              { backgroundColor: item.type === 'lost' ? colors.lostSoft : colors.foundSoft },
+            ]}
+          >
+            <Ionicons
+              name="image-outline"
+              size={48}
+              color={item.type === 'lost' ? colors.lost : colors.found}
+            />
+            <Text style={styles.noPhoto}>Няма снимка</Text>
+          </View>
         )}
-      </View>
-    </ScrollView>
+        {item.imageUrls?.length > 1 ? (
+          <Text style={styles.galleryHint}>{item.imageUrls.length} снимки – плъзни настрани</Text>
+        ) : null}
+
+        <TypeBadge type={item.type} status={item.status} />
+        <Text style={styles.title}>{item.title}</Text>
+
+        <View style={styles.infoRow}>
+          <Info icon="pricetag-outline" label="Категория" value={getCategoryLabel(item.category)} />
+          <Info
+            icon="calendar-outline"
+            label={item.type === 'lost' ? 'Изгубено на' : 'Намерено на'}
+            value={formatDate(item.eventDate || item.createdAt)}
+          />
+        </View>
+        <Info icon="location-outline" label="Място" value={item.place} />
+        {item.location ? (
+          <Pressable
+            onPress={openInMaps}
+            style={({ pressed }) => [styles.mapLink, pressed && styles.pressed]}
+          >
+            <Ionicons name="map-outline" size={18} color={colors.found} />
+            <Text style={styles.mapLinkText}>Отвори в картите</Text>
+          </Pressable>
+        ) : null}
+
+        {item.reward ? (
+          <View style={styles.reward}>
+            <Ionicons name="gift-outline" size={18} color={colors.lost} />
+            <Text style={styles.rewardText}>Предлага се възнаграждение за намирането</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Описание</Text>
+          <Text style={styles.description}>{item.description}</Text>
+        </View>
+
+        <Text style={styles.owner}>Публикувана от {isOwner ? 'теб' : item.ownerName}</Text>
+
+        <View style={styles.actions}>
+          {isOwner ? (
+            <>
+              <PrimaryButton
+                title="Редактирай"
+                onPress={() => navigation.navigate('EditItem', { itemId })}
+                disabled={busy}
+              />
+              <PrimaryButton
+                title={isResolved ? 'Активирай отново' : 'Маркирай като върнато'}
+                variant="secondary"
+                onPress={handleToggleStatus}
+                loading={busy}
+              />
+              <PrimaryButton title="Изтрий" variant="secondary" onPress={handleDelete} disabled={busy} />
+            </>
+          ) : (
+            <PrimaryButton
+              title={item.type === 'lost' ? 'Намерих го — пиши на автора' : 'Мое е — пиши на автора'}
+              onPress={handleContact}
+            />
+          )}
+        </View>
+
+        <CommentsSection itemId={itemId} itemOwnerId={item.ownerId} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
