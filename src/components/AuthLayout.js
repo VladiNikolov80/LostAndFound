@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../constants/colors';
@@ -9,10 +9,9 @@ import { colors } from '../constants/colors';
 export default function AuthLayout({ title, subtitle, children }) {
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      {/* 'padding' и на двете системи – на Android приложението е edge-to-edge
+          и прозорецът не се смалява сам, когато се отвори клавиатурата. */}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.brand}>Lost & Found</Text>
           <Text style={styles.title}>{title}</Text>

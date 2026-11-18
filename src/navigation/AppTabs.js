@@ -22,6 +22,8 @@ export default function AppTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        // Скрива долните табове, докато клавиатурата е отворена – повече място за формата.
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.muted,
         tabBarIcon: ({ focused, color, size }) => (

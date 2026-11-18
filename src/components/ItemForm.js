@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 import DateField from './DateField';
 import FormInput from './FormInput';
@@ -29,6 +30,9 @@ const EMPTY_VALUES = {
 // Общата форма за „Нова обява“ и „Редакция“.
 // onSubmit получава проверените стойности и връща Promise.
 export default function ItemForm({ initialValues, submitLabel, onSubmit }) {
+  // Височината на заглавната лента горе. KeyboardAvoidingView я ползва,
+  // за да изчисли точно колко да отмести формата нагоре.
+  const headerHeight = useHeaderHeight();
   const [values, setValues] = useState(() => ({
     ...EMPTY_VALUES,
     ...initialValues,
@@ -106,9 +110,13 @@ export default function ItemForm({ initialValues, submitLabel, onSubmit }) {
   }
 
   return (
+    // Android: приложението е edge-to-edge и прозорецът не се смалява сам при клавиатура,
+    // затова KeyboardAvoidingView добавя отдолу място, колкото е клавиатурата.
+    // iPhone: ScrollView сам отмества съдържанието (automaticallyAdjustKeyboardInsets).
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'android' ? 'height' : undefined}
+      behavior={Platform.OS === 'android' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
     >
       <ScrollView
         style={styles.flex}
