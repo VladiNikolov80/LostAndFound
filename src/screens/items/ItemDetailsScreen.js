@@ -109,9 +109,20 @@ export default function ItemDetailsScreen({ route, navigation }) {
 
       <View style={styles.infoRow}>
         <Info icon="pricetag-outline" label="Категория" value={getCategoryLabel(item.category)} />
-        <Info icon="calendar-outline" label="Публикувана" value={formatDate(item.createdAt)} />
+        <Info
+          icon="calendar-outline"
+          label={item.type === 'lost' ? 'Изгубено на' : 'Намерено на'}
+          value={formatDate(item.eventDate || item.createdAt)}
+        />
       </View>
       <Info icon="location-outline" label="Място" value={item.place} />
+
+      {item.reward ? (
+        <View style={styles.reward}>
+          <Ionicons name="gift-outline" size={18} color={colors.lost} />
+          <Text style={styles.rewardText}>Предлага се възнаграждение за намирането</Text>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Описание</Text>
@@ -207,6 +218,20 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 6,
+  },
+  reward: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: colors.lostSoft,
+  },
+  rewardText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.lost,
   },
   sectionTitle: {
     fontSize: 15,

@@ -25,6 +25,9 @@
         "projectId": "f1ef0f5e-d8f3-4647-a396-b4df13b15219"
       }
     },
-    "owner": "vladinikolovs-team"
+    "owner": "vladinikolovs-team",
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

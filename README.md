@@ -143,7 +143,27 @@ All Firestore calls are in one file, `src/services/itemsService.js`, so the scre
 
 ### 8. Forms & Validation
 
-*Will be filled in with the New post form.*
+**Forms Used:** Login, Register, New post, Edit post. New post and Edit post use the same component, `ItemForm`, so the rules are the same in both.
+
+**Input types (not only text)**
+- **Lost / Found** – two big buttons, only one can be selected.
+- **Category** – chips (Keys, Wallets, Phones…), you tap one.
+- **Date picker** – "When did you lose / find it?" (`@react-native-community/datetimepicker`). On Android it opens the system date window, on iPhone it shows the small inline picker. You can't choose a date in the future (`maximumDate`).
+- **Switch** – "I offer a reward". It shows only for Lost posts, because for Found posts it makes no sense. If it is on, the details screen shows a reward note.
+
+**Validation Rules**
+- **Title** – this field has more than one rule: it is required, at least 3 characters and at most 60 characters. I trim it first, so a title with only spaces is not accepted.
+- **Category** – required.
+- **Description** – at least 10 characters.
+- **Place** – required.
+- **Date** – required and not in the future.
+- **Register:** name at least 2 characters; email required and in a valid format; password required, at least 6 characters, and both passwords must be the same.
+- Every error is shown in red under its own field, and the field gets a red border, so you know exactly what to fix.
+
+**Keyboard, Safe Area & Status Bar**
+- The forms are inside `KeyboardAvoidingView` + `ScrollView`, so the keyboard never covers the field you are typing in. You can always scroll to the button.
+- `SafeAreaProvider` wraps the app and the login screens use `SafeAreaView`, so nothing goes under the notch or the clock. The screens with a header get the safe area from React Navigation.
+- `StatusBar` from `expo-status-bar` is set to dark text, because the app background is light.
 
 ### 9. Native Device Features
 
