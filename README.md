@@ -26,6 +26,7 @@ With two accounts you can see the difference between your own posts and other pe
 - **Firebase** – Authentication and Firestore (free Spark plan)
 - **Cloudinary** – stores the photos (free plan)
 - **expo-image-picker**, **expo-location** and **expo-file-system** – camera, gallery, GPS and photo upload
+- **react-native-webview** + **Leaflet** with OpenStreetMap map tiles (from CARTO, free API key, no payment card) – the Map tab
 
 ## Running the project locally
 
@@ -108,6 +109,13 @@ So there are navigators inside other navigators: the stacks are inside the tabs.
 
 **Screens**
 - 9 screens: Login, Register, Posts list, Post details, Edit post, New post, Map, My posts, Profile.
+
+**Map tab**
+- Shows all active posts that have a GPS place as colored points: orange for **Lost**, blue for **Found**. Returned posts are not shown. On top there is a small legend with how many of each there are.
+- The map zooms by itself so that all points are visible (`fitBounds`).
+- Tap a point and a bubble shows the title and the place, with an **Open the post** button. It opens the details in the Posts tab (`navigate('ItemsTab', { screen: 'ItemDetails', params: { itemId } })`), so the Back button works.
+- How I made it: `react-native-maps` needs a Google Maps API key for an Android build, and Google wants a payment card for that. So the map is a small web page with **Leaflet** and OpenStreetMap tiles inside a `WebView`. The tiles come from **CARTO**, which needs a free API key (no card) in `src/config/maps.js`. At first I used CARTO without a key, but CARTO started to require one and the map showed an "API KEY REQUIRED" watermark – so I requested a key. The app builds this page with the points (`buildMapHtml()`), and the page sends the id of the post back to the app with `window.ReactNativeWebView.postMessage()`.
+- The post titles go into the map with `textContent`, not as HTML, so a strange title can't break the page.
 
 **Screens with a parameter**
 - Post details and Edit post get the post's id as a route parameter (`itemId`) and read it with `route.params`.
